@@ -1,52 +1,37 @@
 #include <DS_raw.h>
 #include <microDS18B20.h>
 #include <microOneWire.h>
-#include "myPID.h"
+#include "PID.h"
 
-#define PIN_LED 13
-#define PIN_PMP 12
-#define PIN_FAN 11
+#define PIN_FAN 10
+#define PIN_PMP 11
 #define PIN_POT A0
-MicroDS18B20<2> DS;
+#define PIN_BTN A1
+MicroDS18B20<2> DS18;
 
-bool isDebugEnabled = true;
-const float minPotTemp = 20;
-const float maxPotTemp = 40;
+float minPot = 20;
+float maxPot = 40;
 
-float TARG_TEMP = 20;
-float CURR_TEMP = 36;
+float targTemp = 0;
+float currTemp = 0;
 
-myPID FAN_PID(1, 0, 0, TARG_TEMP);
-//myPID PMP_PID(0, 0, 0, TARG_TEMP);
+//bool isDebugEnabled = false;
+
+PID FAN_PID(0, 0, 0, targTemp);
 
 void setup() {
-  pinMode(PIN_LED, OUTPUT);
-  pinMode(PIN_PMP, OUTPUT);
-  pinMode(PIN_FAN, OUTPUT);
-
+  //if(isDebugEnabled)
   Serial.begin(9600);
+  
+  pinMode(PIN_FAN, OUTPUT);
+  pinMode(PIN_PMP, OUTPUT);
+
 }
 
 void loop() {
+  DS18.requestTemp();
   uint32_t delTimer = millis();
-  while(millis() - delTimer < 100) {
-    changeTargTempHandler();
-  }
-  debug();
-  //DS.requestTemp();
-  //CURR_TEMP = DS.getTemp();
-}
-
-void changeTargTempHandler() {
-  float potTemp = ((analogRead(PIN_POT) * (maxPotTemp - minPotTemp)) / 1024) + minPotTemp;
-  if(abs(potTemp - TARG_TEMP) > 0.5) {
-    TARG_TEMP = potTemp;
-    FAN_PID.setTarget(TARG_TEMP);
-  }
-}
-
-void debug() {
-  if(isDebugEnabled) {
-    Serial.println("current:" + String(CURR_TEMP) + ",target:" + String(TARG_TEMP));
-  }
+  while(millis() - delTimer < 100) {}
+  currTemp = DS18.getTemp();
+  Serial.println(FAN_PID.out(currTemp));
 }
