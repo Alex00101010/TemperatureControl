@@ -10,10 +10,7 @@
 MicroDS18B20<2> DS18;
 
 byte const minFan = 40;
-byte const maxFan = 255;
-
 byte const minPmp = 40;
-byte const maxPmp = 255;
 
 float minPot = 20;
 float maxPot = 40;
@@ -27,8 +24,7 @@ PID FAN_PID(0, 0, 0, targTemp);
 PID PMP_PID(0, 0, 0, targTemp);
 
 void setup() {
-  if(isDebugEnabled)
-    Serial.begin(9600);
+  Serial.begin(9600);
   
   pinMode(PIN_FAN, OUTPUT);
   pinMode(PIN_PMP, OUTPUT);
@@ -43,19 +39,18 @@ void loop() {
   }
   currTemp = DS18.getTemp();
   
-  analogWrite(PIN_FAN, clamp(FAN_PID.out(currTemp), 255, maxFan - minFan) + minFan);
-  analogWrite(PIN_PMP, clamp(PMP_PID.out(currTemp), 255, maxPmp - minPmp) + minPmp);
-
+  analogWrite(PIN_FAN, clamp(FAN_PID.out(currTemp), 255, minFan));
+  analogWrite(PIN_PMP, clamp(PMP_PID.out(currTemp), 255, minPmp));
   
 }
 
-byte clamp(float floatVal, float maxFloatVal, byte maxByteVal) {
-  if(floatVal < 0) floatVal = 0;
-  byte result;
-  if(floatVal > maxFloatVal)
-    result = 255;
-  else
-    result = byte((floatVal / maxFloatVal) * float(maxByteVal));
+byte clamp(float input, float maxFloatValue, byte minByteVal) {
+  if(input < 0) input = 0;
+  if(input > maxFloatValue) input = maxFloatValue;
+  
+  byte result = (input / maxFloatValue) * 255;
+  if(result < minByteVal) result = minByteVal;
+  
   return(result);
 }
 
