@@ -3,6 +3,9 @@
 #include <microOneWire.h>
 #include "PID.h"
 
+#define PIN_N_RESET 8
+#define PIN_N_CLOCK 9
+
 #define PIN_FAN 10
 #define PIN_PMP 11
 #define PIN_POT A0
@@ -19,6 +22,7 @@ float targTemp = 0;
 float currTemp = 0;
 
 bool isDebugEnabled = false;
+uint32_t targTempTime = 0;
 
 PID FAN_PID(0, 0, 0, targTemp);
 PID PMP_PID(0, 0, 0, targTemp);
@@ -28,6 +32,11 @@ void setup() {
   
   pinMode(PIN_FAN, OUTPUT);
   pinMode(PIN_PMP, OUTPUT);
+
+  pinMode(PIN_N_RESET, OUTPUT);
+  pinMode(PIN_N_CLOCK, OUTPUT);
+
+  resetNumber();
 }
 
 void loop() {
@@ -36,6 +45,7 @@ void loop() {
   while(millis() - delTimer < 100) {
     debug();
     buttonHandler();
+    CDTemp();
   }
   currTemp = DS18.getTemp();
   
@@ -54,18 +64,36 @@ byte clamp(float input, float maxFloatValue, byte minByteVal) {
   return(result);
 }
 
+void CDTemp() {
+  if(millis() < targTempTime)
+    setNumber(targTemp);
+  else
+    setNumber(currTemp);
+}
+
 void debug() {
   if(isDebugEnabled) {
     Serial.println("targetTemp:" + String(targTemp) + ",currentTemp:" + String(currTemp));
   }
 }
 
-void serialHandler() {
-  //empty
-}
-
 void buttonHandler() {
   float potTempVal = (analogRead(PIN_POT) / 1024) * (maxPot - minPot) + minPot;
-  if(digitalRead(PIN_BTN) && (abs(potTempVal - targTemp) > 0.2))
+  if(digitalRead(PIN_BTN) && (abs(potTempVal - targTemp) > 0.2)) {
     targTemp = potTempVal;
+    targTempTime = millis() + 1500;
+  }
+}
+
+void resetNumber() {
+  digitalWrite(PIN_N_RESET, HIGH);
+  digitalWrite(PIN_N_RESET, LOW);
+}
+
+void setNumber(int n) {
+  resetNumber();
+  while(n--) {
+    digitalWrite(PIN_N_CLOCK, HIGH);
+    digitalWrite(PIN_N_CLOCK, LOW);
+  }
 }
