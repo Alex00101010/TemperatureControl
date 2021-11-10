@@ -10,6 +10,7 @@
 #define PIN_PMP 11
 #define PIN_POT A0
 #define PIN_BTN A1
+
 MicroDS18B20<2> DS18;
 
 byte const minFan = 40;
@@ -27,16 +28,23 @@ uint32_t targTempTime = 0;
 PID FAN_PID(0, 0, 0, targTemp);
 PID PMP_PID(0, 0, 0, targTemp);
 
+#define ENC_A 2
+#define ENC_B 4
+#define ENC_TYPE 1
+volatile int encCounter;
+volatile boolean state0, lastState, turnFlag;
+
 void setup() {
   Serial.begin(9600);
+  attachInterrupt(0, encInt, CHANGE);
   
   pinMode(PIN_FAN, OUTPUT);
   pinMode(PIN_PMP, OUTPUT);
 
   pinMode(PIN_N_RESET, OUTPUT);
   pinMode(PIN_N_CLOCK, OUTPUT);
-
-  resetNumber();
+  
+  setNumber(0);
 }
 
 void loop() {
@@ -47,11 +55,11 @@ void loop() {
     buttonHandler();
     CDTemp();
   }
+  Serial.println(encCounter);
   currTemp = DS18.getTemp();
-  
+  setNumber(currTemp);
   analogWrite(PIN_FAN, clamp(FAN_PID.out(currTemp), 255, minFan));
   analogWrite(PIN_PMP, clamp(PMP_PID.out(currTemp), 255, minPmp));
-  
 }
 
 byte clamp(float input, float maxFloatValue, byte minByteVal) {
@@ -85,15 +93,27 @@ void buttonHandler() {
   }
 }
 
-void resetNumber() {
+void setNumber(int n) {
   digitalWrite(PIN_N_RESET, HIGH);
   digitalWrite(PIN_N_RESET, LOW);
-}
-
-void setNumber(int n) {
-  resetNumber();
+  
   while(n--) {
     digitalWrite(PIN_N_CLOCK, HIGH);
     digitalWrite(PIN_N_CLOCK, LOW);
+  }
+}
+
+void encInt() {
+  state0 = digitalRead(ENC_A);
+  if (state0 != lastState) {
+#if (ENC_TYPE == 1)
+    turnFlag = !turnFlag;
+    if (turnFlag) {
+      encCounter += (digitalRead(ENC_B) != lastState) ? -1 : 1;
+    }
+#else
+    encCounter += (digitalRead(ENC_B) != lastState) ? -1 : 1;
+#endif
+    lastState = state0;
   }
 }
